@@ -1,0 +1,1 @@
+Any script that generates a figure file containing some representation of data will write to this directory 

@@ -1,96 +1,98 @@
 library("igraph")
 library("tidyverse")
-source("functions.R")
-
-#Load and Organize Data ============================================================
-
-edgelist <-    
-    scan("read/updatedTRN.txt", skip = 1, what = "character") %>%
-    matrix(ncol=2,byrow=TRUE) 
-
-graph <-    
-    edgelist %>%
-    graph_from_edgelist(directed = FALSE) 
-
-clusters_object <- 
-    graph %>%
-    cluster_fast_greedy(weights=NULL)
 
 # Constants ============================================================
 
-to_keep <- 7
+to_keep <- 7 # Number of clusters to plot in order of size (largest to smallest)
+trn_file <- "read/updatedTRN.txt" #edge list file to read from
+sterility_gene_sets_file <- "read/sterility_genes_OGS3_2.csv"
+write_to <- "write/figure/dataplot/sterility_genes_per_cluster.pdf" #file to write figures to
 
-pallete <-
-    RColorBrewer::brewer.pal(3,"RdGy")
-    
-#Build Base Data Frame ============================================================
+# Collect and plot the data ============================================================
 
-base_data <-     
-    graph %>%
-    V() %>%
-    as_ids() %>%
-    enframe(name=NULL, value="vertices") %>%
-    mutate(cluster=
-        clusters_object %>%
-        membership() 
-    ) %>%
-    mutate(cluster_rank=
-        clusters_object %>%
-        sizes() %>%
-        magrittr::subtract() %>%
-        rank(ties.method = "first") %>%
-        magrittr::extract(
-            cluster
-        ) 
-    ) %>%
-    mutate(type=
-        if_else(
-            vertices %>% magrittr::is_in(edgelist[,1]),
-            "Transcription Factor",
-            "Target"
-        )
-    ) %>%
-    filter(
-        cluster_rank <= to_keep  
-    )
-
-am_to_ogs_3_2 <- 
-    scan("read/AM_to_OGS3_2.txt",skip = 1, what = "character") %>%
+edgelist <-    
+    scan(trn_file, skip = 1, what = "character") %>%
     matrix(ncol=2,byrow=TRUE) 
 
-#Helper Functions ============================================================
+trn <-
+    edgelist %>%
+    graph_from_edgelist(directed=FALSE) 
 
-read_gene_set <-
-	function(gene_set_location)
-	{
-		gene_set_location %>%
-		scan(skip = 1, what = "character") %>%
-    	translate(am_to_ogs_3_2) %>%
-    	na.omit()
-	}
+clusters <- 
+    trn %>%
+    cluster_fast_greedy(weights=NULL)
 
-extend_base_data <-
-    function(gene_set)
-    {
-        base_data %>% 
+gene_w_gene_set <-
+    read_csv(sterility_gene_sets_file) %>%
+    gather(key="sterility_gene_set", value="gene", na.rm = TRUE)
+
+genes_w_type <-
+    tibble(gene=edgelist[,1]) %>%
+    mutate(type=rep("Transcription Factor", length(edgelist[,1]))) %>%
+    dplyr::union(
+        tibble(gene=edgelist[,2]) %>%
+        mutate(type=rep("Target Gene", length(edgelist[,2])))
+    )
+
+genes_w_cluster <-
+    tibble(
+        gene=
+            trn %>%
+            V() %>%
+            as_ids(),
+        cluster=
+            clusters %>% 
+            membership() %>%
+            magrittr::extract(
+                clusters %>%
+                sizes() %>%
+                magrittr::subtract() %>%
+                rank(ties.method = "first"),
+                .
+            )
+    ) %>%
+    filter(
+        cluster <= to_keep
+    )
+
+genes_w_type_w_cluster <-
+    genes_w_cluster %>%
+    inner_join(genes_w_type) 
+
+gene_sets <-
+    gene_w_gene_set %>% 
+    pull(sterility_gene_set) %>% 
+    unique()
+
+#Plot ============================================================
+
+pallete <- RColorBrewer::brewer.pal(3,"RdGy")
+
+pdf(file=write_to) 	
+
+for (gene_set in gene_sets) 
+{
+    current_gene_w_gene_set <-
+        gene_w_gene_set %>%
+        filter(sterility_gene_set == gene_set) 
+
+    table <-
+        genes_w_type_w_cluster %>%
+        left_join(current_gene_w_gene_set) %>%
         mutate(sterility_gene=
             if_else(
-                vertices %>% magrittr::is_in(gene_set),
-                "Sterility Genes",
-                "Remaining Genes"
-            )
+                sterility_gene_set %>% is.na(),
+                "Remaining Genes",
+                "Sterility Genes"
+            ),
+            sterility_gene_set=NULL
         )
-    }
 
-plot_extended_data <-
-    function(extended_data,title)
-    {
-        pallete <-
-            RColorBrewer::brewer.pal(3,"RdGy")
-        ggplot(extended_data, aes(x=cluster_rank %>% factor(),y=sterility_gene,colour=type)) +
+    plot <-
+        ggplot(table, aes(x=cluster %>% factor(),y=sterility_gene,colour=type)) +
         geom_jitter() +
-        geom_vline(xintercept = c(1:6) + .5, size=.1) +
-        labs(title = title,
+        geom_vline(xintercept = c(1:(to_keep-1)) + .5, size=.1) +
+        labs(title = gene_set,
             x = "Clusters",
             y = NULL,
             colour = "Gene Type") +
@@ -99,45 +101,9 @@ plot_extended_data <-
         theme(
             panel.grid.major = element_blank() 
         )
-    }
 
-#Gene Set Plotting ============================================================
-
-pdf(file="write/figure/dataplot/sterility_genes_per_cluster.pdf") 
-
-"read/Cardoen_2011_Sterility_Genes.txt" %>%
-read_gene_set() %>%
-extend_base_data() %>%
-plot_extended_data("Cardoen 2011 Gene Set")
-
-print(plot)
-
-"read/Grozinger_2003_Sterility_Genes.txt" %>%
-read_gene_set() %>%
-extend_base_data() %>%
-plot_extended_data("Grozinger 2003 Gene Set")
-
-print(plot)
-
-"read/Grozinger_2007_Sterility_Genes.txt" %>%
-read_gene_set() %>%
-extend_base_data() %>%
-plot_extended_data("Grozinger 2007 Get Set")
-
-print(plot)
-
-"read/Mullen_2014_Sterility_Genes.txt" %>%
-read_gene_set() %>%
-extend_base_data() %>%
-plot_extended_data("Mullen 2014 Gene Set")
-
-print(plot)
-
-"read/Galbraith_2016_Sterility_Genes.txt" %>%
-scan(skip = 1, what = "character") %>%
-extend_base_data() %>%
-plot_extended_data("Galbraith 2016 Gene Set")
-
-print(plot)
+    print(plot)
+}
 
 dev.off()
+

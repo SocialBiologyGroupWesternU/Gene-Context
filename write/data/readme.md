@@ -1,0 +1,1 @@
+Any script that generates a text file (.txt or .csv) will write it to this directory

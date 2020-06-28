@@ -1,0 +1,1 @@
+This directory contains all the data that the scripts depend on

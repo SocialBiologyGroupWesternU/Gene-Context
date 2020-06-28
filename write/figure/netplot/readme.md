@@ -1,0 +1,1 @@
+Any script that generates a figure file containing a network graphic will write to this directory 

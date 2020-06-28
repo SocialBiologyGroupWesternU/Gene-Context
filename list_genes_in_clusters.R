@@ -3,8 +3,8 @@ library("tidyverse")
 
 # Constants ============================================================
 
-read_from <- "read/updatedTRN.txt" #edge list file to read from
-write_to <- "write/data/cluster_gene_list.csv" #file to write the results to
+read_from <- "read/updatedTRN.txt" # Edgelist file
+write_to <- "write/data/cluster_gene_list.csv" # File to save result data to
 
 # Helper functions ============================================================
 
@@ -40,9 +40,9 @@ largest_cluster_size <-
 table <-
 	clusters %>%
 	map(
-		function(vertices) c(vertices, rep(NA, largest_cluster_size - length(vertices))) #add NAs to lists so that each column is the same length
+		function(vertices) c(vertices, rep(NA, largest_cluster_size - length(vertices))) #Append NAs to each gene list so that the resulting data is rectangular
 	) %>%
 	as_tibble()
 
 table %>% 
-	write_csv(write_to, na="", col_names=FALSE)
+	write_csv(write_to, na="", col_names=FALSE) #Write each NA as an empty cell

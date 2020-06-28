@@ -5,7 +5,7 @@ source("functions.R")
 
 old_edgelist <- "read/TRN.txt" # AM probe edgelist file
 translation_table <- "read/AM_to_OGS3_2.txt" # File that contains AM to OGS 3.2 pairs 
-write_to <- "write/transformation/updatedTRN.txt" # File to write updated edgelist to
+write_to <- "write/data/updatedTRN.txt" # File to write updated edgelist to
 
 # Read and update trn ============================================================
 
