@@ -7,6 +7,15 @@ to_keep <- 7 # Number of clusters to plot in order of size (largest to smallest)
 trn_file <- "read/updatedTRN.txt" #edge list file to read from
 sterility_gene_sets_file <- "read/sterility_genes_OGS3_2.csv"
 write_to <- "write/figure/dataplot/sterility_genes_per_cluster.pdf" #file to write figures to
+alternate_names <- #plots to be published are given an alternate name
+    tribble(
+        ~sterility_gene_set, ~alternate_name,
+        "Cardoen 2011",      "A",
+        "Grozinger 2003",    "B",
+        "Grozinger 2007",    "C",
+        "Mullen 2014",       "D",
+        "Galbraith 2016",    "E" 
+    )
 
 # Collect and plot the data ============================================================
 
@@ -62,7 +71,8 @@ genes_w_type_w_cluster <-
 gene_sets <-
     gene_w_gene_set %>% 
     pull(sterility_gene_set) %>% 
-    unique()
+    unique() %>%
+    sort()
 
 #Plot ============================================================
 
@@ -103,6 +113,31 @@ for (gene_set in gene_sets)
         )
 
     print(plot)
+
+    alternate_name <-
+        alternate_names %>% 
+        filter(sterility_gene_set == gene_set) %>%
+        pull(alternate_name) %>% 
+        first()
+    
+    if (!is.na(alternate_name)) {
+        plot <-
+            ggplot(table, aes(x=cluster %>% factor(),y=sterility_gene,colour=type)) +
+            geom_jitter() +
+            geom_vline(xintercept = c(1:(to_keep-1)) + .5, size=.1) +
+            labs(title = alternate_name,
+                x = "Clusters",
+                y = NULL,
+                colour = "Gene Type") +
+            scale_colour_manual(values=pallete[c(3,1)])+
+            theme_linedraw() + 
+            theme(
+                panel.grid.major = element_blank(),
+                plot.title = element_text(size=30, face='bold') 
+            )
+
+        print(plot)
+    }
 }
 
 dev.off()
