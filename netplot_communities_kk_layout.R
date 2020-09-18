@@ -4,12 +4,12 @@ library("igraph")
 
 to_keep <- 9 # Number of clusters to plot in order of size (largest to smallest)
 read_from <- "read/updatedTRN.txt" # Edgelist file
-write_to <- "write/figure/netplot/clusters_bipartite_layout.pdf" # Figure file
+write_to <- "write/figure/netplot/clusters_kk_layout.pdf" # Figure file
 
 #Load and organize the data ============================================================
 
 edgelist <-    
-    scan("read/updatedTRN.txt", skip = 1, what = "character") %>%
+    scan(read_from, skip = 1, what = "character") %>%
     matrix(ncol=2,byrow=TRUE) 
 
 graph <-    
@@ -40,9 +40,9 @@ GENE_vector <-
 node_pallete <-
 	RColorBrewer::brewer.pal(3,"RdGy")
 
-pdf(file="write/figure/netplot/clusters_kk_layout.pdf") 	
+pdf(file=write_to) 	
 
-for (i in 1:size)
+for (i in 1:to_keep)
 {
 	cluster <- 
 		graph %>%
